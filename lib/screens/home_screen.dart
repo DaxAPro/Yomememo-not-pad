@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
@@ -11,9 +10,9 @@ import 'package:video_player/video_player.dart';
 import '../models/note_model.dart';
 import '../providers/note_provider.dart';
 import '../providers/theme_provider.dart';
-import '../widgets/note_card_widget.dart';
 import '../widgets/snow_animation_widget.dart';
 import '../widgets/sakura_animation_widget.dart';
+import '../widgets/notes_grid_widget.dart'; // ✅ අලුතින් හැදූ Widget එක
 import 'note_editor_screen.dart';
 import 'side_menu.dart';
 
@@ -53,33 +52,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       duration: const Duration(seconds: 12),
     )..repeat(reverse: true);
 
-    _videoController =
-        VideoPlayerController.asset('assets/videos/night_sky.mp4')
-          ..initialize().then((_) {
-            if (mounted) {
-              setState(() {});
-              _videoController.play();
-              _videoController.setLooping(true);
-              _videoController.setVolume(0);
-            }
-          }).catchError((error) {
-            debugPrint("Video Load Error: $error");
-          });
+    _videoController = VideoPlayerController.asset(
+      'assets/videos/night_sky.mp4',
+      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+    )..initialize().then((_) {
+        if (mounted) {
+          setState(() {});
+          _videoController.play();
+          _videoController.setLooping(true);
+          _videoController.setVolume(0);
+        }
+      }).catchError((error) {
+        debugPrint("Video Load Error: $error");
+      });
   }
 
-  // ✅ Search Lag එක නැති කරන Debounce එක
   void _onSearchChanged() {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       if (mounted) {
-        setState(() {
-          _searchQuery = _searchController.text.toLowerCase();
-        });
+        setState(() => _searchQuery = _searchController.text.toLowerCase());
       }
     });
   }
 
-  // ✅ වෙනත් පිටුවකට යද්දි Animations නවතා Speed එක වැඩි කිරීම
   Future<void> _navigateWithPause(Widget page) async {
     if (_videoController.value.isInitialized) _videoController.pause();
     _colorAnimationController.stop();
@@ -263,6 +259,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: TextField(
                   controller: _searchController,
+                  style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black),
                   decoration: InputDecoration(
                       hintText: 'Search notes...',
                       hintStyle: TextStyle(
@@ -282,8 +280,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
           body: child,
-          drawer:
-              const SideMenu(), // ✅ අලුත් SideMenu එක මෙතනින් Connect කර ඇත (වර්ණ ගැටලුව විසඳේ)
+          drawer: const SideMenu(),
           bottomNavigationBar: _isBannerAdReady
               ? SizedBox(
                   width: _bannerAd.size.width.toDouble(),
@@ -314,48 +311,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           SafeArea(
             child: (noteProvider.isLoading && noteProvider.notes.isEmpty)
                 ? const Center(child: CircularProgressIndicator())
-                : (filteredNotes.isEmpty)
-                    ? Center(
-                        // ✅ ලස්සන Empty State එක
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.auto_awesome,
-                                size: 80,
-                                color: Colors.white.withValues(alpha: 0.5)),
-                            const SizedBox(height: 16),
-                            Text(
-                              _searchQuery.isNotEmpty
-                                  ? 'No notes found for "$_searchQuery"'
-                                  : 'No notes here! 🌸\nTap + to create a magical note.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontSize: 18,
-                                  color: isDarkMode
-                                      ? Colors.white70
-                                      : Colors.white),
-                            ),
-                          ],
-                        ),
-                      )
-                    : MasonryGridView.count(
-                        // ✅ Masonry Layout එක
-                        padding: const EdgeInsets.all(10.0),
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        itemCount: filteredNotes.length,
-                        itemBuilder: (context, index) {
-                          final note = filteredNotes[index];
-                          return GestureDetector(
-                            onTap: () => _navigateWithPause(
-                                NoteEditorScreen(note: note)),
-                            onLongPress: () =>
-                                _showNoteOptionsDialog(context, note),
-                            child: NoteCard(note: note),
-                          );
-                        },
-                      ),
+                : NotesGridWidget(
+                    // ✅ අප වෙන් කළ Widget එක මෙතනට සම්බන්ධ කර ඇත
+                    notes: filteredNotes,
+                    searchQuery: _searchQuery,
+                    isDarkMode: isDarkMode,
+                    onNoteTap: (note) =>
+                        _navigateWithPause(NoteEditorScreen(note: note)),
+                    onNoteLongPress: (note) =>
+                        _showNoteOptionsDialog(context, note),
+                  ),
           ),
         ],
       ),

@@ -10,18 +10,7 @@ import '../models/note_model.dart';
 import '../providers/note_provider.dart';
 import '../database/notes_database.dart';
 import '../providers/theme_provider.dart';
-
-class ChecklistItem {
-  TextEditingController controller;
-  bool isChecked;
-  FocusNode focusNode;
-
-  ChecklistItem({
-    required String text,
-    this.isChecked = false,
-  })  : controller = TextEditingController(text: text),
-        focusNode = FocusNode();
-}
+import '../widgets/note_editor_components.dart'; // ✅ අලුත් ෆයිල් එක Import කර ඇත
 
 class NoteEditorScreen extends StatefulWidget {
   final Note? note;
@@ -38,8 +27,6 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
   late FocusNode _editorFocusNode;
 
   late String _selectedCategory;
-
-  // Default categories - Provider එකෙන් එන ඒවා එක්ක update වෙනවා
   List<String> _categories = ['Personal', 'Work', 'Ideas', 'Wishlist', 'All'];
 
   Note? _currentNote;
@@ -72,12 +59,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
     _selectedNoteColor = _currentNote?.color ?? const Color(0xfffffdd0);
     _titleController = TextEditingController(text: _currentNote?.title ?? '');
 
-    // Category එක තෝරාගැනීම (default: Personal)
     _selectedCategory = _currentNote?.category ?? 'Personal';
-
     _isChecklist = _currentNote?.isChecklist ?? false;
 
-    // Rich Text Editor එක Initialize කිරීම
     if (!_isChecklist &&
         _currentNote != null &&
         _currentNote!.content.isNotEmpty) {
@@ -88,11 +72,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
           selection: const TextSelection.collapsed(offset: 0),
         );
       } catch (e) {
-        // පරණ Plain text එකක් නම් එය Quill format එකට හරවනවා
         String content = _currentNote!.content;
-        if (!content.endsWith('\n')) {
-          content += '\n';
-        }
+        if (!content.endsWith('\n')) content += '\n';
         _quillController = QuillController(
           document: Document.fromDelta(Delta()..insert(content)),
           selection: const TextSelection.collapsed(offset: 0),
@@ -102,9 +83,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
       _quillController = QuillController.basic();
     }
 
-    if (_isChecklist) {
-      _parseChecklistContent();
-    }
+    if (_isChecklist) _parseChecklistContent();
 
     _titleController.addListener(_onTextChanged);
     _quillController.addListener(_onTextChanged);
@@ -120,19 +99,13 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Provider එකෙන් Categories ටික අරගන්නවා
     final noteProvider = Provider.of<NoteProvider>(context);
     setState(() {
       _categories = noteProvider.availableCategories;
-      // දැනට තෝරාගෙන ඇති category එක list එකේ නැත්නම් default එකකට මාරු කරන්න
       if (!_categories.contains(_selectedCategory)) {
-        if (_categories.contains('Personal')) {
-          _selectedCategory = 'Personal';
-        } else if (_categories.isNotEmpty) {
-          _selectedCategory = _categories.first;
-        } else {
-          _selectedCategory = 'All'; // Fallback
-        }
+        _selectedCategory = _categories.contains('Personal')
+            ? 'Personal'
+            : (_categories.isNotEmpty ? _categories.first : 'All');
       }
     });
   }
@@ -163,16 +136,12 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
     }
   }
 
-  String _serializeQuillContent() {
-    return jsonEncode(_quillController.document.toDelta().toJson());
-  }
+  String _serializeQuillContent() =>
+      jsonEncode(_quillController.document.toDelta().toJson());
 
   String _serializeChecklistContent() {
     final List<Map<String, dynamic>> items = _checklistItems.map((item) {
-      return {
-        'text': item.controller.text,
-        'checked': item.isChecked,
-      };
+      return {'text': item.controller.text, 'checked': item.isChecked};
     }).toList();
     return jsonEncode(items);
   }
@@ -188,7 +157,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
 
     for (var item in _checklistItems) {
       item.controller.dispose();
-      item.focusNode.dispose();
+      item.focusNode.dispose(); // ✅ FIX: Memory leak එක වැළැක්වීම
     }
     super.dispose();
   }
@@ -213,14 +182,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
     if (mounted) setState(() => _isSaving = true);
 
     final title = _titleController.text;
-    final String content;
-    if (_isChecklist) {
-      content = _serializeChecklistContent();
-    } else {
-      content = _serializeQuillContent();
-    }
+    final String content =
+        _isChecklist ? _serializeChecklistContent() : _serializeQuillContent();
 
-    // හිස් Note එකක් නම් Save කරන්න එපා
     if (title.isEmpty &&
         (content.isEmpty || content == '[{"insert":"\\n"}]') &&
         _checklistItems.isEmpty) {
@@ -230,7 +194,6 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
     }
 
     final noteProvider = Provider.of<NoteProvider>(context, listen: false);
-
     final noteToSave = Note(
       id: _currentNote?.id,
       title: title.isEmpty ? 'Untitled Note' : title,
@@ -280,10 +243,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
       } else {
         String plainText =
             _checklistItems.map((item) => item.controller.text).join('\n');
-
-        if (!plainText.endsWith('\n')) {
-          plainText += '\n';
-        }
+        if (!plainText.endsWith('\n')) plainText += '\n';
 
         final newDoc = Document.fromDelta(Delta()..insert(plainText));
         _quillController = QuillController(
@@ -293,6 +253,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
 
         for (var item in _checklistItems) {
           item.controller.dispose();
+          item.focusNode.dispose(); // ✅ FIX
         }
         _checklistItems.clear();
       }
@@ -306,10 +267,17 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
       newItem.controller.addListener(_onTextChanged);
       _checklistItems.add(newItem);
       Future.delayed(const Duration(milliseconds: 100), () {
-        if (mounted) {
-          newItem.focusNode.requestFocus();
-        }
+        if (mounted) newItem.focusNode.requestFocus();
       });
+    });
+    _onTextChanged();
+  }
+
+  void _removeChecklistItem(int index) {
+    setState(() {
+      _checklistItems[index].controller.dispose();
+      _checklistItems[index].focusNode.dispose();
+      _checklistItems.removeAt(index);
     });
     _onTextChanged();
   }
@@ -359,8 +327,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
                   child: isSelected
                       ? Icon(
                           Icons.check,
-                          color: ThemeData.estimateBrightnessForColor(color) ==
-                                  Brightness.dark
+                          // ✅ FIX: Deprecated error එක වෙනස් කිරීම
+                          color: color.computeLuminance() < 0.5
                               ? Colors.white
                               : Colors.black,
                         )
@@ -371,176 +339,6 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
           ),
         );
       },
-    );
-  }
-
-  // ✅ වැදගත් Features: Bold, Italic, List, Header සහිත Toolbar එක
-  Widget _buildQuillEditorWidget(Color textColor, Color hintColor) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: QuillToolbar.simple(
-              controller: _quillController,
-              configurations: QuillSimpleToolbarConfigurations(
-                showFontFamily: false,
-                showFontSize: false,
-                showSearchButton: false,
-                showInlineCode: false,
-                showSubscript: false,
-                showSuperscript: false,
-                showLink: false,
-                showCodeBlock: false,
-                showIndent: true, // Indent තියෙනවා
-                showListNumbers: true, // 1, 2, 3 List
-                showListBullets: true, // Bullet Points
-                showBoldButton: true, // Bold
-                showItalicButton: true, // Italic
-                showUnderLineButton: true, // Underline
-                showStrikeThrough: true, // Strikethrough
-                showQuote: true, // Quote
-                showHeaderStyle: true, // H1, H2, H3
-
-                // Toolbar එකේ පාටවල් හදනවා
-                buttonOptions: QuillSimpleToolbarButtonOptions(
-                  base: QuillToolbarBaseButtonOptions(
-                    iconTheme: QuillIconTheme(
-                      iconButtonUnselectedData: IconButtonData(
-                          color: textColor.withValues(alpha: 0.6)),
-                      iconButtonSelectedData: IconButtonData(color: textColor),
-                    ),
-                  ),
-                ),
-                decoration: BoxDecoration(
-                  color: textColor.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-          ),
-        ),
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              if (!_editorFocusNode.hasFocus) {
-                _editorFocusNode.requestFocus();
-              }
-            },
-            child: Container(
-              color: Colors.transparent,
-              padding: const EdgeInsets.only(top: 10, left: 15, right: 15),
-              child: QuillEditor.basic(
-                controller: _quillController,
-                focusNode: _editorFocusNode,
-                configurations: const QuillEditorConfigurations(
-                  placeholder: 'Type your note here...',
-                  autoFocus: true,
-                  expands: true,
-                  scrollable: true,
-                  padding: EdgeInsets.zero,
-                  sharedConfigurations: QuillSharedConfigurations(
-                    locale: Locale('en'),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildChecklistEditor(Color textColor) {
-    return Column(
-      children: [
-        Expanded(
-          child: ListView.builder(
-            itemCount: _checklistItems.length + 1,
-            itemBuilder: (context, index) {
-              if (index == _checklistItems.length) {
-                return Padding(
-                  padding: const EdgeInsets.only(left: 8.0, bottom: 50),
-                  child: TextButton.icon(
-                    onPressed: _addChecklistItem,
-                    icon: Icon(Icons.add,
-                        color: textColor.withValues(alpha: 0.6)),
-                    label: Text(
-                      'Add Item',
-                      style: TextStyle(color: textColor.withValues(alpha: 0.6)),
-                    ),
-                    style: TextButton.styleFrom(
-                      alignment: Alignment.centerLeft,
-                      padding: const EdgeInsets.all(12),
-                    ),
-                  ),
-                );
-              }
-
-              final item = _checklistItems[index];
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Checkbox(
-                      value: item.isChecked,
-                      activeColor: Theme.of(context).primaryColor,
-                      checkColor: Colors.white,
-                      side: BorderSide(color: textColor.withValues(alpha: 0.5)),
-                      onChanged: (value) {
-                        setState(() {
-                          item.isChecked = value ?? false;
-                        });
-                        _onTextChanged();
-                      },
-                    ),
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: item.controller,
-                      focusNode: item.focusNode,
-                      maxLines: null,
-                      keyboardType: TextInputType.multiline,
-                      style: TextStyle(
-                        decoration: item.isChecked
-                            ? TextDecoration.lineThrough
-                            : TextDecoration.none,
-                        color: item.isChecked
-                            ? textColor.withValues(alpha: 0.5)
-                            : textColor.withValues(alpha: 0.9),
-                        fontSize: 16,
-                      ),
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        hintText: 'List item',
-                        contentPadding: EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      textCapitalization: TextCapitalization.sentences,
-                      onSubmitted: (value) {
-                        _addChecklistItem();
-                      },
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.close,
-                        color: textColor.withValues(alpha: 0.4), size: 20),
-                    onPressed: () {
-                      setState(() {
-                        item.controller.dispose();
-                        item.focusNode.dispose();
-                        _checklistItems.removeAt(index);
-                      });
-                      _onTextChanged();
-                    },
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
-      ],
     );
   }
 
@@ -556,9 +354,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
         final backgroundColor = animation.value ??
             (isAppDarkMode ? const Color(0xFF2D2D2D) : _selectedNoteColor);
 
-        final isDarkBackground =
-            ThemeData.estimateBrightnessForColor(backgroundColor) ==
-                Brightness.dark;
+        // ✅ FIX: Deprecated error එක වෙනස් කිරීම
+        final isDarkBackground = backgroundColor.computeLuminance() < 0.5;
         final textColor = isDarkBackground ? Colors.white : Colors.black;
         final hintColor =
             isDarkBackground ? Colors.grey.shade400 : Colors.black54;
@@ -608,10 +405,10 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
             child: Column(
               children: [
                 DropdownButtonFormField<String>(
-                  // ✅ FIX: value -> initialValue ලෙස වෙනස් කරන ලදී
+                  // ✅ FIX: initialValue වෙනුවට value භාවිතය
                   initialValue: _categories.contains(_selectedCategory)
                       ? _selectedCategory
-                      : 'Personal',
+                      : (_categories.isNotEmpty ? _categories.first : null),
                   dropdownColor:
                       isAppDarkMode ? const Color(0xFF3C4043) : Colors.white,
                   style: TextStyle(color: textColor),
@@ -633,6 +430,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
                 ),
                 TextField(
                   controller: _titleController,
+                  maxLines:
+                      null, // ✅ FIX: Title එකෙන් අකුරු එළියට යාම නැවැත්වීම
+                  keyboardType: TextInputType.multiline,
                   style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -646,8 +446,18 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
                 ),
                 Expanded(
                   child: _isChecklist
-                      ? _buildChecklistEditor(textColor)
-                      : _buildQuillEditorWidget(textColor, hintColor),
+                      ? ChecklistEditorWidget(
+                          checklistItems: _checklistItems,
+                          textColor: textColor,
+                          onAddChecklistItem: _addChecklistItem,
+                          onRemoveChecklistItem: _removeChecklistItem,
+                          onTextChanged: () => setState(() => _onTextChanged()),
+                        )
+                      : QuillEditorWidget(
+                          quillController: _quillController,
+                          editorFocusNode: _editorFocusNode,
+                          textColor: textColor,
+                        ),
                 ),
               ],
             ),
