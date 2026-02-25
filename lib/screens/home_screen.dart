@@ -12,7 +12,8 @@ import '../providers/note_provider.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/snow_animation_widget.dart';
 import '../widgets/sakura_animation_widget.dart';
-import '../widgets/notes_grid_widget.dart'; // ✅ අලුතින් හැදූ Widget එක
+// ✅ පරණ NotesGridWidget වෙනුවට අලුතින් හදපු NotesLayoutBuilder එක ගන්නවා
+import '../widgets/notes_layout_builder.dart';
 import 'note_editor_screen.dart';
 import 'side_menu.dart';
 
@@ -31,6 +32,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   late VideoPlayerController _videoController;
   late AnimationController _colorAnimationController;
+
+  // ✅ View Style එක මතක තියාගන්න Variable එක (මුලින්ම Staggered පෙන්වයි)
+  NoteViewStyle _currentStyle = NoteViewStyle.staggered;
 
   @override
   void initState() {
@@ -91,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _loadBannerAd() {
     _bannerAd = BannerAd(
-      adUnitId: 'ca-app-pub-3940256099942544/6300978111',
+      adUnitId: 'ca-app-pub-6724714162464767/2958351464',
       request: const AdRequest(),
       size: AdSize.banner,
       listener: BannerAdListener(
@@ -225,6 +229,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             elevation: 0,
             actions: [
+              // ✅ Layout Style එක මාරු කරන අලුත් Button එක
+              IconButton(
+                icon: Icon(
+                  _currentStyle == NoteViewStyle.staggered
+                      ? Icons.view_agenda
+                      : _currentStyle == NoteViewStyle.list
+                          ? Icons.grid_view
+                          : Icons.dashboard,
+                  color: Colors.white,
+                ),
+                tooltip: 'Change View Style',
+                onPressed: () {
+                  setState(() {
+                    if (_currentStyle == NoteViewStyle.staggered) {
+                      _currentStyle = NoteViewStyle.list;
+                    } else if (_currentStyle == NoteViewStyle.list) {
+                      _currentStyle = NoteViewStyle.grid;
+                    } else {
+                      _currentStyle = NoteViewStyle.staggered;
+                    }
+                  });
+                },
+              ),
               PopupMenuButton<SortOrder>(
                 icon: const Icon(Icons.swap_vert, color: Colors.white),
                 tooltip: 'Sort Notes',
@@ -311,9 +338,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           SafeArea(
             child: (noteProvider.isLoading && noteProvider.notes.isEmpty)
                 ? const Center(child: CircularProgressIndicator())
-                : NotesGridWidget(
-                    // ✅ අප වෙන් කළ Widget එක මෙතනට සම්බන්ධ කර ඇත
+                : NotesLayoutBuilder(
+                    // ✅ අලුත් Widget එකෙන් Notes පෙන්නන තැන
                     notes: filteredNotes,
+                    viewStyle: _currentStyle, // Style 3 මාරු වෙන්නෙ මෙතනින්
                     searchQuery: _searchQuery,
                     isDarkMode: isDarkMode,
                     onNoteTap: (note) =>

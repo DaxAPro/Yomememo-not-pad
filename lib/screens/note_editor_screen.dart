@@ -10,7 +10,7 @@ import '../models/note_model.dart';
 import '../providers/note_provider.dart';
 import '../database/notes_database.dart';
 import '../providers/theme_provider.dart';
-import '../widgets/note_editor_components.dart'; // ✅ අලුත් ෆයිල් එක Import කර ඇත
+import '../widgets/note_editor_components.dart';
 
 class NoteEditorScreen extends StatefulWidget {
   final Note? note;
@@ -157,7 +157,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
 
     for (var item in _checklistItems) {
       item.controller.dispose();
-      item.focusNode.dispose(); // ✅ FIX: Memory leak එක වැළැක්වීම
+      item.focusNode.dispose();
     }
     super.dispose();
   }
@@ -253,7 +253,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
 
         for (var item in _checklistItems) {
           item.controller.dispose();
-          item.focusNode.dispose(); // ✅ FIX
+          item.focusNode.dispose();
         }
         _checklistItems.clear();
       }
@@ -327,7 +327,6 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
                   child: isSelected
                       ? Icon(
                           Icons.check,
-                          // ✅ FIX: Deprecated error එක වෙනස් කිරීම
                           color: color.computeLuminance() < 0.5
                               ? Colors.white
                               : Colors.black,
@@ -354,7 +353,6 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
         final backgroundColor = animation.value ??
             (isAppDarkMode ? const Color(0xFF2D2D2D) : _selectedNoteColor);
 
-        // ✅ FIX: Deprecated error එක වෙනස් කිරීම
         final isDarkBackground = backgroundColor.computeLuminance() < 0.5;
         final textColor = isDarkBackground ? Colors.white : Colors.black;
         final hintColor =
@@ -405,7 +403,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
             child: Column(
               children: [
                 DropdownButtonFormField<String>(
-                  // ✅ FIX: initialValue වෙනුවට value භාවිතය
+                  // ✅ FIX: නවතම Flutter අනුවාද සඳහා 'value' වෙනුවට 'initialValue' භාවිතය
                   initialValue: _categories.contains(_selectedCategory)
                       ? _selectedCategory
                       : (_categories.isNotEmpty ? _categories.first : null),
@@ -430,8 +428,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
                 ),
                 TextField(
                   controller: _titleController,
-                  maxLines:
-                      null, // ✅ FIX: Title එකෙන් අකුරු එළියට යාම නැවැත්වීම
+                  maxLines: null,
                   keyboardType: TextInputType.multiline,
                   style: TextStyle(
                       fontSize: 24,
@@ -453,10 +450,52 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
                           onRemoveChecklistItem: _removeChecklistItem,
                           onTextChanged: () => setState(() => _onTextChanged()),
                         )
-                      : QuillEditorWidget(
-                          quillController: _quillController,
-                          editorFocusNode: _editorFocusNode,
-                          textColor: textColor,
+                      : Column(
+                          children: [
+                            Theme(
+                              data: Theme.of(context).copyWith(
+                                iconTheme: IconThemeData(color: textColor),
+                              ),
+                              child: QuillSimpleToolbar(
+                                controller: _quillController,
+                                configurations:
+                                    const QuillSimpleToolbarConfigurations(
+                                  showUndo: false,
+                                  showRedo: false,
+                                  showFontFamily: false,
+                                  showFontSize: false,
+                                  showSearchButton: false,
+                                  showSubscript: false,
+                                  showSuperscript: false,
+                                  showInlineCode: false,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Expanded(
+                              child: QuillEditor.basic(
+                                controller: _quillController,
+                                focusNode: _editorFocusNode,
+                                configurations: QuillEditorConfigurations(
+                                  placeholder: 'Start writing your thoughts...',
+                                  padding: const EdgeInsets.all(8),
+                                  customStyles: DefaultStyles(
+                                    paragraph: DefaultTextBlockStyle(
+                                      TextStyle(
+                                        color: textColor,
+                                        fontSize: 16,
+                                        height: 1.5,
+                                      ),
+                                      const HorizontalSpacing(0, 0),
+                                      const VerticalSpacing(0, 0),
+                                      const VerticalSpacing(0, 0),
+                                      null,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                 ),
               ],
