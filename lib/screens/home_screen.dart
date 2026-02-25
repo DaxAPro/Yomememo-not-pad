@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
@@ -12,8 +11,8 @@ import '../providers/note_provider.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/snow_animation_widget.dart';
 import '../widgets/sakura_animation_widget.dart';
-// ✅ පරණ NotesGridWidget වෙනුවට අලුතින් හදපු NotesLayoutBuilder එක ගන්නවා
 import '../widgets/notes_layout_builder.dart';
+import '../widgets/magical_text_animation.dart';
 import 'note_editor_screen.dart';
 import 'side_menu.dart';
 
@@ -33,7 +32,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late VideoPlayerController _videoController;
   late AnimationController _colorAnimationController;
 
-  // ✅ View Style එක මතක තියාගන්න Variable එක (මුලින්ම Staggered පෙන්වයි)
   NoteViewStyle _currentStyle = NoteViewStyle.staggered;
 
   @override
@@ -218,18 +216,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           appBar: AppBar(
             foregroundColor: Colors.white,
             backgroundColor: isDarkMode ? null : colorAnimation.value,
-            title: Text(
-              'YumeMemo 🎀',
-              style: GoogleFonts.indieFlower(
-                textStyle: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 32,
-                ),
-              ),
+            title: const MagicalTextAnimation(
+              text: 'YumeMemo 🎀',
+              fontSize: 32,
             ),
             elevation: 0,
             actions: [
-              // ✅ Layout Style එක මාරු කරන අලුත් Button එක
               IconButton(
                 icon: Icon(
                   _currentStyle == NoteViewStyle.staggered
@@ -339,9 +331,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: (noteProvider.isLoading && noteProvider.notes.isEmpty)
                 ? const Center(child: CircularProgressIndicator())
                 : NotesLayoutBuilder(
-                    // ✅ අලුත් Widget එකෙන් Notes පෙන්නන තැන
                     notes: filteredNotes,
-                    viewStyle: _currentStyle, // Style 3 මාරු වෙන්නෙ මෙතනින්
+                    viewStyle: _currentStyle,
                     searchQuery: _searchQuery,
                     isDarkMode: isDarkMode,
                     onNoteTap: (note) =>
