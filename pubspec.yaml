@@ -1,7 +1,7 @@
 name: yumememo
 description: "An aesthetic anime notepad for your thoughts and dreams."
 publish_to: 'none'
-version: 1.2.0+10
+version: 1.1.0+10
 
 environment:
   sdk: '>=3.6.0 <4.0.0'
