@@ -1,14 +1,11 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import '../providers/theme_provider.dart';
-import '../providers/note_provider.dart';
-import '../models/note_model.dart';
 import 'about_page.dart';
+
+// ✅ අලුතින් හදපු Backup Settings Card එක මෙතනට Import කරලා තියෙනවා
+import '../widgets/backup_settings_card.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -18,94 +15,11 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  // ✅ Backup Function (Fixed Async Gaps)
-  Future<void> _backupNotes(BuildContext context) async {
-    try {
-      // Listen: false is important here to avoid rebuilds
-      final noteProvider = Provider.of<NoteProvider>(context, listen: false);
-      final notes = noteProvider.notes;
-
-      String jsonString = jsonEncode(notes.map((e) => e.toJson()).toList());
-
-      final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/yumememo_backup.json');
-
-      await file.writeAsString(jsonString);
-
-      // Share plugin calls native UI, no need for context check usually,
-      // but good practice to await.
-      await Share.shareXFiles([XFile(file.path)], text: 'YumeMemo Backup File');
-    } catch (e) {
-      // ✅ FIX: Check mounted before using context
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Backup Failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  // ✅ Restore Function (Fixed Async Gaps)
-  Future<void> _restoreNotes(BuildContext context) async {
-    try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.any,
-      );
-
-      if (result != null) {
-        File file = File(result.files.single.path!);
-        String content = await file.readAsString();
-
-        List<dynamic> jsonList = jsonDecode(content);
-
-        // ✅ FIX: Check mounted before accessing Provider using context
-        if (!context.mounted) return;
-
-        final noteProvider = Provider.of<NoteProvider>(context, listen: false);
-
-        int count = 0;
-        for (var jsonItem in jsonList) {
-          Map<String, dynamic> noteMap = jsonItem;
-          noteMap.remove('_id'); // ID conflict වැළැක්වීමට
-
-          Note newNote = Note.fromJson(noteMap);
-          await noteProvider.addNote(newNote);
-          count++;
-        }
-
-        // ✅ FIX: Check mounted before showing SnackBar
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Successfully restored $count notes!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      // ✅ FIX: Check mounted
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            // ✅ FIX: Added const
-            content: Text('Restore Failed: File might be corrupted.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
+  // ✅ ලොකු _backupNotes සහ _restoreNotes functions මෙතනින් සම්පූර්ණයෙන්ම ඉවත් කර ඇත. (ඒවා දැන් තියෙන්නේ BackupService එකෙයි)
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-
-    // ✅ FIX: Unused 'noteProvider' variable removed from here
-
     final primaryColor = themeProvider.appColor;
 
     final List<Color> accentColors = [
@@ -172,7 +86,6 @@ class _SettingsPageState extends State<SettingsPage> {
                         itemBuilder: (context, index) {
                           final color = accentColors[index];
 
-                          // ✅ FIX: .value -> .toARGB32() (Deprecated member use fixed)
                           bool isSelected =
                               primaryColor.toARGB32() == color.toARGB32();
                           bool isWhite = color == Colors.white;
@@ -273,100 +186,18 @@ class _SettingsPageState extends State<SettingsPage> {
               const SizedBox(height: 25),
 
               // ==========================================
-              // SECTION 4: DATA & BACKUP
+              // SECTION 4: DATA & BACKUP (CLEANED UP)
               // ==========================================
               _buildSectionHeader('DATA'),
 
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
-                color: Colors.white.withValues(alpha: 0.1),
-                child: Column(
-                  children: [
-                    // Backup Button
-                    _buildSettingsTile(
-                      context,
-                      icon: Icons.cloud_upload_outlined,
-                      title: 'Backup Data',
-                      subtitle: 'Save notes to a file',
-                      color: Colors.blue,
-                      onTap: () => _backupNotes(context),
-                    ),
-                    Divider(
-                        height: 1,
-                        indent: 60,
-                        color: Colors.grey.withValues(alpha: 0.2)),
-
-                    // Restore Button
-                    _buildSettingsTile(
-                      context,
-                      icon: Icons.cloud_download_outlined,
-                      title: 'Restore Data',
-                      subtitle: 'Import notes from file',
-                      color: Colors.green,
-                      onTap: () => _restoreNotes(context),
-                    ),
-                    Divider(
-                        height: 1,
-                        indent: 60,
-                        color: Colors.grey.withValues(alpha: 0.2)),
-
-                    // Delete Button
-                    _buildSettingsTile(
-                      context,
-                      icon: Icons.delete_forever_outlined,
-                      title: 'Delete All Notes',
-                      subtitle: 'Cannot be undone',
-                      color: Colors.redAccent,
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            backgroundColor: const Color(0xFF2D2D2D),
-                            title: const Text('Delete Everything?',
-                                style: TextStyle(color: Colors.white)),
-                            content: const Text(
-                                'Are you sure you want to delete ALL notes permanently? This cannot be undone.',
-                                style: TextStyle(color: Colors.white70)),
-                            actions: [
-                              TextButton(
-                                child: const Text('Cancel',
-                                    style: TextStyle(color: Colors.white)),
-                                onPressed: () => Navigator.of(ctx).pop(),
-                              ),
-                              TextButton(
-                                child: const Text('DELETE',
-                                    style: TextStyle(color: Colors.red)),
-                                onPressed: () async {
-                                  // ✅ අලුත් වේගවත් Delete ක්‍රමය (Loop එක ඉවත් කර ඇත)
-                                  final provider = Provider.of<NoteProvider>(
-                                      context,
-                                      listen: false);
-                                  await provider.deleteAllPermanently();
-
-                                  if (context.mounted) {
-                                    Navigator.of(ctx).pop();
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text(
-                                              'All notes deleted permanently! ✨')),
-                                    );
-                                  }
-                                },
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
+              // ✅ මෙන්න අලුතින් හදපු Widget එක (ලොකු කෝඩ් එක වෙනුවට මේ පේළිය පමණක් ප්‍රමාණවත්)
+              const BackupSettingsCard(),
 
               const SizedBox(height: 25),
 
-              // About Section
+              // ==========================================
+              // SECTION 5: OTHER
+              // ==========================================
               _buildSectionHeader('OTHER'),
               Card(
                 elevation: 2,
@@ -397,6 +228,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  // Helper Methods
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(left: 10, bottom: 10),
@@ -499,7 +331,6 @@ class _SettingsPageState extends State<SettingsPage> {
       child: GestureDetector(
         onTap: () async {
           if (icon != null) {
-            // Pick Custom Image
             FilePickerResult? result =
                 await FilePicker.platform.pickFiles(type: FileType.image);
             if (result != null) {

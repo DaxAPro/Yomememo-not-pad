@@ -5,9 +5,9 @@ import 'providers/note_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/home_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MobileAds.instance.initialize();
+  await MobileAds.instance.initialize();
   runApp(const YumeMemoApp());
 }
 
