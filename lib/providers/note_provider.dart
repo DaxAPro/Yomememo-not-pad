@@ -83,16 +83,13 @@ class NoteProvider extends ChangeNotifier {
     await refreshAllData();
   }
 
+  // ✅ App එකේ Lag එකක් නැතිව Trash එක පමණක් එකවර මකා දැමීම
   Future<void> emptyTrash() async {
-    for (var note in _trashedNotes) {
-      if (note.id != null) {
-        await NotesDatabase.instance.delete(note.id!);
-      }
-    }
+    await NotesDatabase.instance.deleteTrashedNotes();
     await refreshAllData();
   }
 
-  // ✅ App එකේ Lag එකක් නැතුව සියල්ල මකා දැමීම (Delete All)
+  // 🔴 අවවාදයයි: App එකේ ඇති සියලුම දත්ත (Active + Trash) මකා දමයි!
   Future<void> deleteAllPermanently() async {
     await NotesDatabase.instance.deleteAllNotes();
     await refreshAllData();
@@ -116,26 +113,23 @@ class NoteProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // අලුත් Folder එකක් Add කිරීම (With Save)
   Future<void> addCategory(String category) async {
     if (!_availableCategories.contains(category)) {
       _availableCategories.add(category);
-      await _saveCategories(); // Save to Storage
+      await _saveCategories();
       notifyListeners();
     }
   }
 
-  // Folder එකක් Delete කිරීම (With Save)
   Future<void> deleteCategory(String category) async {
     if (category != 'All' && _availableCategories.contains(category)) {
       _availableCategories.remove(category);
 
-      // Delete කරන Folder එක Select වෙලා තිබුනා නම්, ආපහු 'All' වලට මාරු කරන්න
       if (_selectedCategory == category) {
         _selectedCategory = 'All';
       }
 
-      await _saveCategories(); // Save to Storage
+      await _saveCategories();
       notifyListeners();
     }
   }
@@ -153,7 +147,6 @@ class NoteProvider extends ChangeNotifier {
 
     if (savedCategories != null) {
       _availableCategories = savedCategories;
-      // 'All' නැත්නම් අනිවාර්යයෙන් Add කරන්න
       if (!_availableCategories.contains('All')) {
         _availableCategories.insert(0, 'All');
       }
@@ -188,7 +181,7 @@ class NoteProvider extends ChangeNotifier {
         break;
     }
 
-    // 3. Pinned notes always on top (Pinned notes උඩින්ම පෙන්නනවා)
+    // 3. Pinned notes always on top
     filtered.sort((a, b) {
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;

@@ -9,6 +9,13 @@ class NotesDatabase {
 
   NotesDatabase._init();
 
+  // ✅ Constants for Database - උඩින්ම එක් වරක් නිර්වචනය කර ඇත (Clean Code)
+  static const String idType = 'INTEGER PRIMARY KEY AUTOINCREMENT';
+  static const String textType = 'TEXT NOT NULL';
+  static const String boolType = 'BOOLEAN NOT NULL';
+  static const String integerType = 'INTEGER NOT NULL';
+  static const String orderBy = '${NoteFields.createdTime} DESC';
+
   Future<Database> get database async {
     if (_database != null) return _database!;
 
@@ -25,11 +32,6 @@ class NotesDatabase {
   }
 
   Future _createDB(Database db, int version) async {
-    const idType = 'INTEGER PRIMARY KEY AUTOINCREMENT'; // ✅ Changed to const
-    const textType = 'TEXT NOT NULL'; // ✅ Changed to const
-    const boolType = 'BOOLEAN NOT NULL'; // ✅ Changed to const
-    const integerType = 'INTEGER NOT NULL'; // ✅ Changed to const
-
     await db.execute('''
 CREATE TABLE $tableNotes ( 
   ${NoteFields.id} $idType, 
@@ -76,8 +78,6 @@ CREATE TABLE $tableNotes (
 
   Future<List<Note>> readAllNotes() async {
     final db = await instance.database;
-    const orderBy = '${NoteFields.createdTime} DESC'; // ✅ Changed to const
-
     final result = await db.query(tableNotes,
         where: '${NoteFields.isTrashed} = ?', whereArgs: [0], orderBy: orderBy);
 
@@ -86,8 +86,6 @@ CREATE TABLE $tableNotes (
 
   Future<List<Note>> readTrashedNotes() async {
     final db = await instance.database;
-    const orderBy = '${NoteFields.createdTime} DESC'; // ✅ Changed to const
-
     final result = await db.query(
       tableNotes,
       where: '${NoteFields.isTrashed} = ?',
@@ -117,7 +115,17 @@ CREATE TABLE $tableNotes (
     );
   }
 
-  // ✅ App එකේ Lag එකක් නැතිව සියල්ල එකවර මකා දමන අලුත් function එක
+  // ✅ අලුත් Function එක: Trash එකේ ඇති Notes සියල්ලම එකවර වේගයෙන් මකා දැමීම
+  Future<int> deleteTrashedNotes() async {
+    final db = await instance.database;
+    return await db.delete(
+      tableNotes,
+      where: '${NoteFields.isTrashed} = ?',
+      whereArgs: [1], // 1 = true (trashed)
+    );
+  }
+
+  // 🔴 අවවාදයයි: මෙමගින් මුළු Database එකම මැකී යයි. භාවිතා කිරීමේදී ප්‍රවේසම් වන්න.
   Future<int> deleteAllNotes() async {
     final db = await instance.database;
     return await db.delete(tableNotes);

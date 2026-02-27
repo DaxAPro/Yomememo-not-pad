@@ -32,13 +32,13 @@ class YumeMemoApp extends StatelessWidget {
                   ColorScheme.fromSeed(seedColor: themeProvider.appColor),
               useMaterial3: true,
               brightness: Brightness.light,
-              scaffoldBackgroundColor: Colors.transparent,
+              // ✅ Transparent වෙනුවට සුදු හෝ ලා පාටක් භාවිතා කර ඇත (Black screen වලක්වන්න)
+              scaffoldBackgroundColor: Colors.white,
             ),
             darkTheme: ThemeData(
               colorScheme: ColorScheme.fromSeed(
                 seedColor: themeProvider.appColor,
                 brightness: Brightness.dark,
-                // ✅ Dark mode එකට App Color එක මුසු කිරීම (Deep Tint)
                 surface: Color.alphaBlend(
                   themeProvider.appColor.withValues(alpha: 0.15),
                   const Color(0xFF121212),
@@ -46,7 +46,8 @@ class YumeMemoApp extends StatelessWidget {
               ),
               useMaterial3: true,
               brightness: Brightness.dark,
-              scaffoldBackgroundColor: Colors.transparent,
+              // ✅ Transparent වෙනුවට අඳුරු වර්ණයක් භාවිතා කර ඇත
+              scaffoldBackgroundColor: const Color(0xFF121212),
             ),
             home: const HomeScreen(),
           );

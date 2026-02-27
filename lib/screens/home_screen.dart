@@ -13,6 +13,7 @@ import '../widgets/snow_animation_widget.dart';
 import '../widgets/sakura_animation_widget.dart';
 import '../widgets/notes_layout_builder.dart';
 import '../widgets/magical_text_animation.dart';
+import '../widgets/glowing_empty_state.dart'; // ✅ අලුත් දිලිසෙන Empty State Widget එක
 import 'note_editor_screen.dart';
 import 'side_menu.dart';
 
@@ -213,6 +214,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       animation: _colorAnimationController,
       builder: (context, child) {
         return Scaffold(
+          // ✅ Background color is now safely handled by main.dart Theme, transparent here since we have a custom Stack
+          backgroundColor: Colors.transparent,
           appBar: AppBar(
             foregroundColor: Colors.white,
             backgroundColor: isDarkMode ? null : colorAnimation.value,
@@ -330,16 +333,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           SafeArea(
             child: (noteProvider.isLoading && noteProvider.notes.isEmpty)
                 ? const Center(child: CircularProgressIndicator())
-                : NotesLayoutBuilder(
-                    notes: filteredNotes,
-                    viewStyle: _currentStyle,
-                    searchQuery: _searchQuery,
-                    isDarkMode: isDarkMode,
-                    onNoteTap: (note) =>
-                        _navigateWithPause(NoteEditorScreen(note: note)),
-                    onNoteLongPress: (note) =>
-                        _showNoteOptionsDialog(context, note),
-                  ),
+                : filteredNotes
+                        .isEmpty // ✅ Notes නැති විට දිලිසෙන Widget එක පෙන්වීම
+                    ? const GlowingEmptyState()
+                    : NotesLayoutBuilder(
+                        notes: filteredNotes,
+                        viewStyle: _currentStyle,
+                        searchQuery: _searchQuery,
+                        isDarkMode: isDarkMode,
+                        onNoteTap: (note) =>
+                            _navigateWithPause(NoteEditorScreen(note: note)),
+                        onNoteLongPress: (note) =>
+                            _showNoteOptionsDialog(context, note),
+                      ),
           ),
         ],
       ),
