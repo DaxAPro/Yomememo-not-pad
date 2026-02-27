@@ -11,9 +11,10 @@ import '../providers/note_provider.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/snow_animation_widget.dart';
 import '../widgets/sakura_animation_widget.dart';
+import '../widgets/magical_text_animation.dart';
 import '../widgets/notes_layout_builder.dart';
 import '../widgets/magical_text_animation.dart';
-import '../widgets/glowing_empty_state.dart'; // ✅ අලුත් දිලිසෙන Empty State Widget එක
+import '../widgets/glowing_empty_state.dart';
 import 'note_editor_screen.dart';
 import 'side_menu.dart';
 
@@ -24,7 +25,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  late BannerAd _bannerAd;
+  // Safe handling of BannerAd to prevent crashes during disposal
+  BannerAd? _bannerAd;
   bool _isBannerAdReady = false;
   late TextEditingController _searchController;
   String _searchQuery = '';
@@ -105,10 +107,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           debugPrint('Ad failed to load: $err');
           _isBannerAdReady = false;
           ad.dispose();
+          _bannerAd = null;
         },
       ),
     );
-    _bannerAd.load();
+    _bannerAd?.load();
   }
 
   void _showNoteOptionsDialog(BuildContext context, Note note) {
@@ -157,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void dispose() {
     _videoController.dispose();
     _colorAnimationController.dispose();
-    _bannerAd.dispose();
+    _bannerAd?.dispose();
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _debounce?.cancel();
@@ -170,6 +173,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return const SnowAnimationWidget(key: ValueKey('Snow'));
       case 'Sakura':
         return const SakuraAnimationWidget(key: ValueKey('Sakura'));
+      case 'Butterfly':
+        return const ButterflyAnimationWidget(key: ValueKey('Butterfly'));
       case 'None':
       default:
         return const SizedBox.shrink();
@@ -214,7 +219,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       animation: _colorAnimationController,
       builder: (context, child) {
         return Scaffold(
-          // ✅ Background color is now safely handled by main.dart Theme, transparent here since we have a custom Stack
           backgroundColor: Colors.transparent,
           appBar: AppBar(
             foregroundColor: Colors.white,
@@ -303,11 +307,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           body: child,
           drawer: const SideMenu(),
-          bottomNavigationBar: _isBannerAdReady
+          bottomNavigationBar: _isBannerAdReady && _bannerAd != null
               ? SizedBox(
-                  width: _bannerAd.size.width.toDouble(),
-                  height: _bannerAd.size.height.toDouble(),
-                  child: AdWidget(ad: _bannerAd),
+                  width: _bannerAd!.size.width.toDouble(),
+                  height: _bannerAd!.size.height.toDouble(),
+                  child: AdWidget(ad: _bannerAd!),
                 )
               : const SizedBox.shrink(),
           floatingActionButton: FloatingActionButton(
@@ -333,8 +337,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           SafeArea(
             child: (noteProvider.isLoading && noteProvider.notes.isEmpty)
                 ? const Center(child: CircularProgressIndicator())
-                : filteredNotes
-                        .isEmpty // ✅ Notes නැති විට දිලිසෙන Widget එක පෙන්වීම
+                : filteredNotes.isEmpty
                     ? const GlowingEmptyState()
                     : NotesLayoutBuilder(
                         notes: filteredNotes,

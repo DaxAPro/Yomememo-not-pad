@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import '../models/note_model.dart';
@@ -9,7 +10,6 @@ class NotesDatabase {
 
   NotesDatabase._init();
 
-  // ✅ Constants for Database - උඩින්ම එක් වරක් නිර්වචනය කර ඇත (Clean Code)
   static const String idType = 'INTEGER PRIMARY KEY AUTOINCREMENT';
   static const String textType = 'TEXT NOT NULL';
   static const String boolType = 'BOOLEAN NOT NULL';
@@ -48,9 +48,12 @@ CREATE TABLE $tableNotes (
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // FIX: Removed "DROP TABLE IF EXISTS" to prevent accidental data loss
+    // when users update the app to newer versions.
     if (oldVersion < 3) {
-      await db.execute('DROP TABLE IF EXISTS $tableNotes');
-      await _createDB(db, newVersion);
+      // In the future, if you add columns, use ALTER TABLE instead.
+      // Example: await db.execute("ALTER TABLE $tableNotes ADD COLUMN new_feature TEXT");
+      debugPrint("Database upgraded safely from $oldVersion to $newVersion");
     }
   }
 
@@ -115,17 +118,16 @@ CREATE TABLE $tableNotes (
     );
   }
 
-  // ✅ අලුත් Function එක: Trash එකේ ඇති Notes සියල්ලම එකවර වේගයෙන් මකා දැමීම
   Future<int> deleteTrashedNotes() async {
     final db = await instance.database;
     return await db.delete(
       tableNotes,
       where: '${NoteFields.isTrashed} = ?',
-      whereArgs: [1], // 1 = true (trashed)
+      whereArgs: [1],
     );
   }
 
-  // 🔴 අවවාදයයි: මෙමගින් මුළු Database එකම මැකී යයි. භාවිතා කිරීමේදී ප්‍රවේසම් වන්න.
+  // WARNING: This clears the entire table. Be cautious when executing.
   Future<int> deleteAllNotes() async {
     final db = await instance.database;
     return await db.delete(tableNotes);

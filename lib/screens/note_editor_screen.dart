@@ -246,6 +246,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
         if (!plainText.endsWith('\n')) plainText += '\n';
 
         final newDoc = Document.fromDelta(Delta()..insert(plainText));
+
+        _quillController.dispose();
+
         _quillController = QuillController(
             document: newDoc,
             selection: const TextSelection.collapsed(offset: 0));
@@ -353,10 +356,12 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
         final backgroundColor = animation.value ??
             (isAppDarkMode ? const Color(0xFF2D2D2D) : _selectedNoteColor);
 
-        final isDarkBackground = backgroundColor.computeLuminance() < 0.5;
-        final textColor = isDarkBackground ? Colors.white : Colors.black;
-        final hintColor =
-            isDarkBackground ? Colors.grey.shade400 : Colors.black54;
+        final solidColor = backgroundColor.withValues(alpha: 1.0);
+        final isDarkBackground = solidColor.computeLuminance() < 0.5;
+
+        final textColor = isDarkBackground ? Colors.white : Colors.black87;
+        final hintColor = isDarkBackground ? Colors.white54 : Colors.black54;
+
         final statusBarIconBrightness =
             isDarkBackground ? Brightness.light : Brightness.dark;
 
@@ -372,30 +377,73 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
             elevation: 0,
             iconTheme: IconThemeData(color: textColor),
             actions: [
-              IconButton(
-                  icon: Icon(Icons.undo, color: textColor),
-                  onPressed: () {
-                    if (!_isChecklist) _quillController.undo();
-                  }),
-              IconButton(
-                  icon: Icon(Icons.redo, color: textColor),
-                  onPressed: () {
-                    if (!_isChecklist) _quillController.redo();
-                  }),
-              IconButton(
-                icon: Icon(Icons.color_lens_outlined, color: textColor),
-                onPressed: _showColorPicker,
-              ),
+              // Cleaned up App Bar - Only essential actions remain visible
               IconButton(
                 icon: Icon(
                   _isChecklist ? Icons.notes_rounded : Icons.check_box_outlined,
                   color: textColor,
                 ),
+                tooltip:
+                    _isChecklist ? 'Switch to Text' : 'Switch to Checklist',
                 onPressed: _toggleChecklistMode,
               ),
               IconButton(
                   icon: Icon(Icons.save_outlined, color: textColor),
+                  tooltip: 'Save Note',
                   onPressed: () => _saveNote()),
+
+              // 3-Dot Menu for extra options to reduce clutter
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, color: textColor),
+                tooltip: 'More options',
+                color: isAppDarkMode ? const Color(0xFF3C4043) : Colors.white,
+                onSelected: (value) {
+                  if (value == 'color') _showColorPicker();
+                  if (value == 'undo' && !_isChecklist) _quillController.undo();
+                  if (value == 'redo' && !_isChecklist) _quillController.redo();
+                },
+                itemBuilder: (BuildContext context) {
+                  final menuTextColor =
+                      isAppDarkMode ? Colors.white : Colors.black87;
+                  return [
+                    PopupMenuItem<String>(
+                      value: 'color',
+                      child: Row(
+                        children: [
+                          Icon(Icons.color_lens_outlined, color: menuTextColor),
+                          const SizedBox(width: 12),
+                          Text('Change Color',
+                              style: TextStyle(color: menuTextColor)),
+                        ],
+                      ),
+                    ),
+                    if (!_isChecklist)
+                      PopupMenuItem<String>(
+                        value: 'undo',
+                        child: Row(
+                          children: [
+                            Icon(Icons.undo, color: menuTextColor),
+                            const SizedBox(width: 12),
+                            Text('Undo',
+                                style: TextStyle(color: menuTextColor)),
+                          ],
+                        ),
+                      ),
+                    if (!_isChecklist)
+                      PopupMenuItem<String>(
+                        value: 'redo',
+                        child: Row(
+                          children: [
+                            Icon(Icons.redo, color: menuTextColor),
+                            const SizedBox(width: 12),
+                            Text('Redo',
+                                style: TextStyle(color: menuTextColor)),
+                          ],
+                        ),
+                      ),
+                  ];
+                },
+              ),
             ],
           ),
           body: Padding(
@@ -403,7 +451,6 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
             child: Column(
               children: [
                 DropdownButtonFormField<String>(
-                  // ✅ FIX: නවතම Flutter අනුවාද සඳහා 'value' වෙනුවට 'initialValue' භාවිතය
                   initialValue: _categories.contains(_selectedCategory)
                       ? _selectedCategory
                       : (_categories.isNotEmpty ? _categories.first : null),
@@ -460,14 +507,39 @@ class _NoteEditorScreenState extends State<NoteEditorScreen>
                                 controller: _quillController,
                                 configurations:
                                     const QuillSimpleToolbarConfigurations(
-                                  showUndo: false,
-                                  showRedo: false,
-                                  showFontFamily: false,
-                                  showFontSize: false,
+                                  // KEEP: Essential notepad features
+                                  showBoldButton: true,
+                                  showItalicButton: true,
+                                  showUnderLineButton: true,
+                                  showStrikeThrough: true,
+                                  showListBullets: true,
+                                  showListNumbers: true,
+                                  showClearFormat: true,
+
+                                  // HIDE: Unnecessary "WordPress-like" features
+                                  showUndo: false, // Moved to 3-dot menu
+                                  showRedo: false, // Moved to 3-dot menu
+                                  showLink: false,
+                                  showCodeBlock: false,
+                                  showInlineCode: false,
+                                  showQuote: false,
+                                  showHeaderStyle: false,
+                                  showColorButton: false,
+                                  showBackgroundColorButton: false,
+                                  showListCheck:
+                                      false, // Custom checklist is used instead
                                   showSearchButton: false,
                                   showSubscript: false,
                                   showSuperscript: false,
-                                  showInlineCode: false,
+                                  showFontFamily: false,
+                                  showFontSize: false,
+                                  showIndent: false,
+                                  showAlignmentButtons: false,
+                                  showDirection: false,
+                                  showDividers: false,
+                                  showClipboardCut: false,
+                                  showClipboardCopy: false,
+                                  showClipboardPaste: false,
                                 ),
                               ),
                             ),
