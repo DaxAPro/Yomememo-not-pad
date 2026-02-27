@@ -11,9 +11,8 @@ import '../providers/note_provider.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/snow_animation_widget.dart';
 import '../widgets/sakura_animation_widget.dart';
-import '../widgets/magical_text_animation.dart';
+import '../widgets/magical_text_animation.dart'; // Udin text ekata (Butterfly effect eka)
 import '../widgets/notes_layout_builder.dart';
-import '../widgets/magical_text_animation.dart';
 import '../widgets/glowing_empty_state.dart';
 import 'note_editor_screen.dart';
 import 'side_menu.dart';
@@ -173,8 +172,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return const SnowAnimationWidget(key: ValueKey('Snow'));
       case 'Sakura':
         return const SakuraAnimationWidget(key: ValueKey('Sakura'));
-      case 'Butterfly':
-        return const ButterflyAnimationWidget(key: ValueKey('Butterfly'));
+      // Butterfly Animation eka title text ekata witharak nisa background case eka ain kara
       case 'None':
       default:
         return const SizedBox.shrink();
@@ -223,6 +221,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           appBar: AppBar(
             foregroundColor: Colors.white,
             backgroundColor: isDarkMode ? null : colorAnimation.value,
+            // App bar eke title ekata MagicalTextAnimation eka hariyata thiyenawa
             title: const MagicalTextAnimation(
               text: 'YumeMemo 🎀',
               fontSize: 32,
