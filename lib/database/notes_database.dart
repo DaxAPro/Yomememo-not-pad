@@ -27,8 +27,13 @@ class NotesDatabase {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path,
-        version: 3, onCreate: _createDB, onUpgrade: _onUpgrade);
+    // Version එක 3 ලෙස තබා ඇත. Schema වෙනස් වුවහොත් මෙය වැඩි කරන්න.
+    return await openDatabase(
+      path,
+      version: 3,
+      onCreate: _createDB,
+      onUpgrade: _onUpgrade,
+    );
   }
 
   Future _createDB(Database db, int version) async {
@@ -48,12 +53,13 @@ CREATE TABLE $tableNotes (
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // FIX: Removed "DROP TABLE IF EXISTS" to prevent accidental data loss
-    // when users update the app to newer versions.
     if (oldVersion < 3) {
-      // In the future, if you add columns, use ALTER TABLE instead.
-      // Example: await db.execute("ALTER TABLE $tableNotes ADD COLUMN new_feature TEXT");
-      debugPrint("Database upgraded safely from $oldVersion to $newVersion");
+      // මෙහිදී පරණ schema එකක සිටින පරිශීලකයින්ගේ දත්ත නොමැකී
+      // අලුත් columns (isChecklist, category වැනි) එක් කිරීමට ALTER TABLE භාවිතා කළ හැක.
+      debugPrint("Database upgrading from $oldVersion to $newVersion...");
+
+      // උදාහරණයක් ලෙස:
+      // await db.execute("ALTER TABLE $tableNotes ADD COLUMN ${NoteFields.isChecklist} $boolType DEFAULT 0");
     }
   }
 
@@ -81,8 +87,12 @@ CREATE TABLE $tableNotes (
 
   Future<List<Note>> readAllNotes() async {
     final db = await instance.database;
-    final result = await db.query(tableNotes,
-        where: '${NoteFields.isTrashed} = ?', whereArgs: [0], orderBy: orderBy);
+    final result = await db.query(
+      tableNotes,
+      where: '${NoteFields.isTrashed} = ?',
+      whereArgs: [0],
+      orderBy: orderBy,
+    );
 
     return result.map((json) => Note.fromJson(json)).toList();
   }
@@ -127,7 +137,6 @@ CREATE TABLE $tableNotes (
     );
   }
 
-  // WARNING: This clears the entire table. Be cautious when executing.
   Future<int> deleteAllNotes() async {
     final db = await instance.database;
     return await db.delete(tableNotes);
