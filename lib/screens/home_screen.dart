@@ -11,9 +11,8 @@ import '../providers/note_provider.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/snow_animation_widget.dart';
 import '../widgets/sakura_animation_widget.dart';
-import '../widgets/magical_text_animation.dart'; // Udin text ekata (Butterfly effect eka)
+import '../widgets/butterfly_logo_animation.dart';
 import '../widgets/notes_layout_builder.dart';
-import '../widgets/glowing_empty_state.dart';
 import 'note_editor_screen.dart';
 import 'side_menu.dart';
 
@@ -24,7 +23,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  // Safe handling of BannerAd to prevent crashes during disposal
   BannerAd? _bannerAd;
   bool _isBannerAdReady = false;
   late TextEditingController _searchController;
@@ -34,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late VideoPlayerController _videoController;
   late AnimationController _colorAnimationController;
 
-  NoteViewStyle _currentStyle = NoteViewStyle.staggered;
+  NoteViewStyle _currentStyle = NoteViewStyle.grid;
 
   @override
   void initState() {
@@ -104,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         },
         onAdFailedToLoad: (ad, err) {
           debugPrint('Ad failed to load: $err');
-          _isBannerAdReady = false;
+          if (mounted) setState(() => _isBannerAdReady = false);
           ad.dispose();
           _bannerAd = null;
         },
@@ -172,7 +170,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return const SnowAnimationWidget(key: ValueKey('Snow'));
       case 'Sakura':
         return const SakuraAnimationWidget(key: ValueKey('Sakura'));
-      // Butterfly Animation eka title text ekata witharak nisa background case eka ain kara
       case 'None':
       default:
         return const SizedBox.shrink();
@@ -221,31 +218,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           appBar: AppBar(
             foregroundColor: Colors.white,
             backgroundColor: isDarkMode ? null : colorAnimation.value,
-            // App bar eke title ekata MagicalTextAnimation eka hariyata thiyenawa
-            title: const MagicalTextAnimation(
-              text: 'YumeMemo 🎀',
-              fontSize: 32,
+            centerTitle: true,
+            title: const ButterflyLogoAnimation(
+              text: 'YumeMemo',
+              fontSize: 26, // ✅ ෆෝන් වලට හරියන සයිස් එකක්
             ),
             elevation: 0,
             actions: [
               IconButton(
                 icon: Icon(
-                  _currentStyle == NoteViewStyle.staggered
+                  _currentStyle == NoteViewStyle.grid
                       ? Icons.view_agenda
-                      : _currentStyle == NoteViewStyle.list
-                          ? Icons.grid_view
-                          : Icons.dashboard,
+                      : Icons.grid_view,
                   color: Colors.white,
                 ),
                 tooltip: 'Change View Style',
                 onPressed: () {
                   setState(() {
-                    if (_currentStyle == NoteViewStyle.staggered) {
+                    if (_currentStyle == NoteViewStyle.grid) {
                       _currentStyle = NoteViewStyle.list;
-                    } else if (_currentStyle == NoteViewStyle.list) {
-                      _currentStyle = NoteViewStyle.grid;
                     } else {
-                      _currentStyle = NoteViewStyle.staggered;
+                      _currentStyle = NoteViewStyle.grid;
                     }
                   });
                 },
@@ -287,7 +280,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   style: TextStyle(
                       color: isDarkMode ? Colors.white : Colors.black),
                   decoration: InputDecoration(
-                      hintText: 'Search notes...',
+                      hintText: 'Search notes',
                       hintStyle: TextStyle(
                           color: isDarkMode ? Colors.white70 : Colors.black54),
                       prefixIcon: Icon(Icons.search,
@@ -306,13 +299,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           body: child,
           drawer: const SideMenu(),
-          bottomNavigationBar: _isBannerAdReady && _bannerAd != null
-              ? SizedBox(
-                  width: _bannerAd!.size.width.toDouble(),
-                  height: _bannerAd!.size.height.toDouble(),
-                  child: AdWidget(ad: _bannerAd!),
-                )
-              : const SizedBox.shrink(),
           floatingActionButton: FloatingActionButton(
             onPressed: () => _navigateWithPause(const NoteEditorScreen()),
             child: const Icon(Icons.add),
@@ -334,20 +320,66 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           Container(color: Colors.black.withValues(alpha: 0.3)),
           _buildAnimationWidget(themeProvider.animationType),
           SafeArea(
-            child: (noteProvider.isLoading && noteProvider.notes.isEmpty)
-                ? const Center(child: CircularProgressIndicator())
-                : filteredNotes.isEmpty
-                    ? const GlowingEmptyState()
-                    : NotesLayoutBuilder(
-                        notes: filteredNotes,
-                        viewStyle: _currentStyle,
-                        searchQuery: _searchQuery,
-                        isDarkMode: isDarkMode,
-                        onNoteTap: (note) =>
-                            _navigateWithPause(NoteEditorScreen(note: note)),
-                        onNoteLongPress: (note) =>
-                            _showNoteOptionsDialog(context, note),
-                      ),
+            child: Column(
+              children: [
+                if (_isBannerAdReady && _bannerAd != null)
+                  Container(
+                    width: _bannerAd!.size.width.toDouble(),
+                    height: _bannerAd!.size.height.toDouble(),
+                    margin: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+                    child: AdWidget(ad: _bannerAd!),
+                  ),
+                Expanded(
+                  child: (noteProvider.isLoading && noteProvider.notes.isEmpty)
+                      ? const Center(child: CircularProgressIndicator())
+                      : filteredNotes.isEmpty
+                          // ✅ කිසිම ප්‍රශ්නයක් නැතිව පේන අලුත් Empty State එක
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.edit_note_rounded,
+                                    size: 80,
+                                    color: isDarkMode
+                                        ? Colors.white60
+                                        : Colors.white70,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    _searchQuery.isEmpty
+                                        ? 'No notes yet 🎀\nTap + to create one!'
+                                        : 'No matching notes found!',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: isDarkMode
+                                          ? Colors.white70
+                                          : Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      shadows: const [
+                                        Shadow(
+                                            blurRadius: 5,
+                                            color: Colors.black45)
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : NotesLayoutBuilder(
+                              notes: filteredNotes,
+                              viewStyle: _currentStyle,
+                              searchQuery: _searchQuery,
+                              isDarkMode: isDarkMode,
+                              onNoteTap: (note) => _navigateWithPause(
+                                  NoteEditorScreen(note: note)),
+                              onNoteLongPress: (note) =>
+                                  _showNoteOptionsDialog(context, note),
+                            ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

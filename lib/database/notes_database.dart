@@ -54,12 +54,12 @@ CREATE TABLE $tableNotes (
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 3) {
-      // මෙහිදී පරණ schema එකක සිටින පරිශීලකයින්ගේ දත්ත නොමැකී
-      // අලුත් columns (isChecklist, category වැනි) එක් කිරීමට ALTER TABLE භාවිතා කළ හැක.
       debugPrint("Database upgrading from $oldVersion to $newVersion...");
 
-      // උදාහරණයක් ලෙස:
-      // await db.execute("ALTER TABLE $tableNotes ADD COLUMN ${NoteFields.isChecklist} $boolType DEFAULT 0");
+      await db.execute(
+          "ALTER TABLE $tableNotes ADD COLUMN ${NoteFields.isChecklist} $boolType DEFAULT 0");
+      await db.execute(
+          "ALTER TABLE $tableNotes ADD COLUMN ${NoteFields.category} $textType DEFAULT 'Personal'");
     }
   }
 
